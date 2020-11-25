@@ -1,0 +1,159 @@
+//小程序自定义下拉刷新
+
+
+///////wxml文件
+<view>
+  <!-- // wxml布局文件 -->
+  <scroll-view style='height:100%' scroll-y='{{!isindrag}}' bindscroll='scorll'>
+    <!-- //监听布局touch事件 -->
+    <view class='column' bindtouchstart='start' bindtouchend='end' bindtouchmove='move'>
+      <!-- //刷新状态view -->
+      <view style='height:{{hei}}px;background:gray' class='refresh {{hui?"fallBack":""}}'>{{desc}}</view>
+      
+      <view wx:for="{{10}}">内容放在这个地方</view>
+    </view>
+  </scroll-view>
+</view>
+
+
+//css文件
+.refresh{
+  overflow: hidden;
+}
+.fallBack{
+  transition: .5s;
+}
+
+//js文件
+// js文件
+var sy;//记录手指的y坐标
+Component({
+  /**
+   * 组件的属性列表
+   */
+  properties: {
+    
+  },
+
+  /**
+   * 组件的初始数据
+   */
+  data: {
+    data: ['狗狗是人类最好的朋友', '90%长痘的人都不知道，药店里不起眼的东西，睡前抹一抹，祛痘很快', '保时捷Cayenne，即刻驾驭梦想','沙漠极限挑战：三台空调挑战70度极限高温，谁先宕机？','德牧带大的二哈，二哈现在离不开她了，一刻不见就想德牧','为什么说达到第四宇宙速度就可以逃出银河系？','许久没去草坪的边牧，来到公园，开心的像个孩子'],
+    desc: '下拉刷新',//刷新提示语
+    hei: 0,//刷新view高度阈值
+    scrolltop: 0,//scorll-view滑动离顶部的距离
+    isindrag: false,//是否在下拉状态（必须要滑动到顶部才能触发）
+    hui:false//实现下拉回去的时候的动画效果
+  },
+
+  /**
+   * 组件的方法列表
+   */
+  methods: {
+    start(e) {
+      //记录手指触摸是的y坐标
+      sy = e.touches[0].clientY   
+      console.log('开始触摸 sy : ' + sy + ' scrolltop : ' + this.data.scrolltop)
+    },
+    move(e) {
+      console.log("滑动中")
+      //计算手指滑动的距离
+      var delta = e.touches[0].clientY - sy
+      console.log('delta : ' + delta)
+      //scorll-view滑动到顶部且继续向上滑动时，走scorll-view滑动流程
+      if(this.data.hei <= 0 && delta <= 0){
+        return
+      }
+      //scorll-view已经滑动到顶部，继续下拉进入下拉状态
+      if (this.data.scrolltop <= 0){
+        if (this.data.isindrag == false){
+          this.setData({
+            isindrag: true
+          })
+        }
+        var tempdelta = 0
+        console.log('hei : ' + this.data.hei)
+        if(delta > 0){//手指向下滑动
+          if (this.data.hei > 50) {//触发阈值，更改状态
+            this.setData({
+              desc: '松开刷新'
+            })
+            tempdelta = this.data.hei + delta / (this.data.hei - 50)//增大下拉阻尼感
+          } else {
+            this.setData({
+              desc: '下拉刷新'
+            })
+            //手指移动未到阈值，按正常滑动增加高度
+            tempdelta = this.data.hei + delta
+          }
+        } else {//手指向上滑动
+          tempdelta = this.data.hei + delta
+          //刷新状态view最小为0
+          if(tempdelta <= 0){
+            tempdelta = 0
+          }
+          this.setData({
+            desc: '下拉刷新'
+          })
+        }
+        //滑动完成设置刷新view高度
+        this.setData({
+          hei: tempdelta
+        })
+      }
+      //每次滑动事件后记录y坐标
+      sy = e.touches[0].clientY
+    },
+    end(e) {
+      console.log('手指离开')
+      this.setData({
+        hui:true
+      })
+      var that=this
+      //手指离开时，如果阈值大于等于50，则触发刷新
+      if(this.data.hei >= 50){
+        this.setData({
+          desc: '正在刷新...'
+        })
+        this.setData({
+          hei: 50
+        })
+        //模拟耗时操作，2秒后恢复正常状态
+        setTimeout(function () {
+          sy = 0
+          that.setData({
+            desc: '下拉刷新',
+            hei: 0,
+            isindrag: false,
+            scrolltop: 0
+          })
+        }, 2000)
+        setTimeout(() => {
+          that.setData({
+            hui:false
+          })
+        }, 3000);
+      }else{//未下拉到阈值，松开时则收起刷新view
+        sy = 0
+        that.setData({
+          desc: '下拉刷新',
+          hei: 0,
+          isindrag: false,
+          scrolltop: 0
+        })
+      }
+    },
+    scorll(e) {
+      //未进入下拉状态时，记录scorll-view滑动距离顶部的距离
+      var st = e.detail.scrollTop
+      console.log('滚动 st : '+st)
+      if (this.data.isindrag == false){
+        this.setData({
+          scrolltop: st
+        })
+      }
+    }
+  }
+})
+
